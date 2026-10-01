@@ -20,10 +20,10 @@ function getCurrentRate() {
     return baseRate * Math.pow(1.00001, blocks);
 }
 
-// 1. Route to create Plisio Invoice
-app.post('/create-plisio-invoice', async (req, res) => {
+// 1. Route to create Plisio Invoice (Supports both GET and POST requests)
+app.all('/create-plisio-invoice', async (req, res) => {
     try {
-        const walletAddress = req.body.wallet_address || "PENDING_WALLET";
+        const walletAddress = req.body.wallet_address || req.query.wallet_address || "PENDING_WALLET_CONNECT";
         
         // Calculate invoice USD amount based on current dynamic rate
         const currentRate = getCurrentRate();
