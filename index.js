@@ -24,14 +24,16 @@ app.post('/create-plisio-invoice', async (req, res) => {
             api_key: PLISIO_API_KEY,
             callback_url: 'https://dlc-webhook.onrender.com/plisio-webhook',
             success_url: 'https://delta-fund.github.io/',
-            fail_url: 'https://delta-fund.github.io/#buy'
+            fail_url: 'https://delta-fund.github.io/#buy',
+            return_existing: '1'
         });
 
         const plsResponse = await fetch(`https://plisio.net/api/v1/invoices/new?${params.toString()}`);
         const plsData = await plsResponse.json();
 
-        if (plsData.status === 'success' && plsData.result && plsData.result.url) {
-            return res.redirect(plsData.result.url);
+        // Plisio success ya existing invoice dono mein invoice_url return karta hai
+        if (plsData.status === 'success' && plsData.data && plsData.data.invoice_url) {
+            return res.redirect(plsData.data.invoice_url);
         } else {
             console.error("Plisio Error Response:", plsData);
             return res.status(400).send("Failed to create Plisio invoice. Check server logs.");
@@ -42,7 +44,7 @@ app.post('/create-plisio-invoice', async (req, res) => {
     }
 });
 
-// 2. Plisio Webhook Status Listen karne ka Route
+// 2. Plisio Webhook Status Listen karne ka Route (Payment complete hone par token dispatch hoga)
 app.post('/plisio-webhook', async (req, res) => {
     const paymentData = req.body;
 
