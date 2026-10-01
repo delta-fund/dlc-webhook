@@ -10,14 +10,28 @@ const privateKey = process.env.ADMIN_PRIVATE_KEY;
 const rpcUrl = "https://polygon-rpc.com";
 const PLISIO_API_KEY = "KzXe3YIlDFKdub0CG7n8vOv7WYfYhj_hcOjf90-QhuuhmaATJePAUR7A_N-NQ6eG";
 
-// 1. Plisio Invoice Create karne ka Route
+// Track total sold tokens for dynamic pricing
+let totalTokensSold = 0; 
+
+// Function to calculate current rate (Increases by 0.001% for every 100 DLC sold)
+function getCurrentRate() {
+    const blocks = Math.floor(totalTokensSold / 100);
+    const baseRate = 1.0; // Base rate: 1 DLC = 1 USD
+    return baseRate * Math.pow(1.00001, blocks);
+}
+
+// 1. Route to create Plisio Invoice
 app.post('/create-plisio-invoice', async (req, res) => {
     try {
         const walletAddress = req.body.wallet_address || "PENDING_WALLET";
         
+        // Calculate invoice USD amount based on current dynamic rate
+        const currentRate = getCurrentRate();
+        const invoiceUSD = (1 * currentRate).toFixed(4);
+
         const params = new URLSearchParams({
             source_currency: 'USD',
-            source_amount: '10',
+            source_amount: invoiceUSD.toString(),
             order_name: 'Delta Coin DLC Purchase',
             order_number: walletAddress,
             currency: 'USDT_TON',
@@ -31,7 +45,6 @@ app.post('/create-plisio-invoice', async (req, res) => {
         const plsResponse = await fetch(`https://plisio.net/api/v1/invoices/new?${params.toString()}`);
         const plsData = await plsResponse.json();
 
-        // Plisio success ya existing invoice dono mein invoice_url return karta hai
         if (plsData.status === 'success' && plsData.data && plsData.data.invoice_url) {
             return res.redirect(plsData.data.invoice_url);
         } else {
@@ -44,13 +57,19 @@ app.post('/create-plisio-invoice', async (req, res) => {
     }
 });
 
-// 2. Plisio Webhook Status Listen karne ka Route (Payment complete hone par token dispatch hoga)
+// 2. Route to handle Plisio Webhook and dispatch tokens upon payment completion
 app.post('/plisio-webhook', async (req, res) => {
     const paymentData = req.body;
 
     if (paymentData.status === 'completed') {
         const buyerWallet = paymentData.order_number; 
-        const tokensToSend = ethers.utils.parseUnits("100", 18); 
+        const paidAmountUSD = parseFloat(paymentData.source_amount || "1");
+        
+        // Calculate tokens to give based on paid USD and current dynamic rate
+        const currentRate = getCurrentRate();
+        const tokensToGive = (paidAmountUSD / currentRate).toFixed(4);
+
+        const tokensToSend = ethers.utils.parseUnits(tokensToGive.toString(), 18); 
 
         try {
             const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
@@ -62,7 +81,10 @@ app.post('/plisio-webhook', async (req, res) => {
             const tx = await contract.transfer(buyerWallet, tokensToSend);
             await tx.wait();
 
-            console.log("DLC tokens successfully sent to: " + buyerWallet);
+            // Update total sold tokens to increment the rate for future buyers
+            totalTokensSold += parseFloat(tokensToGive);
+
+            console.log(`Successfully sent ${tokensToGive} DLC tokens to: ${buyerWallet}. Total Sold: ${totalTokensSold}`);
         } catch (error) {
             console.error("Token transfer failed: ", error);
         }
