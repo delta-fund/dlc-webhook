@@ -1,6 +1,5 @@
 const express = require('express');
 const { ethers } = require('ethers');
-const fetch = require('node-fetch'); // Agar fetch required ho, ya native fetch use ho raha ho
 const app = express();
 
 app.use(express.json());
@@ -11,7 +10,7 @@ const privateKey = process.env.ADMIN_PRIVATE_KEY;
 const rpcUrl = "https://polygon-rpc.com";
 const PLISIO_API_KEY = "KzXe3YIlDFKdub0CG7n8vOv7WYfYhj_hcOjf90-QhuuhmaATJePAUR7A_N-NQ6eG";
 
-// 1. Plisio Invoice Create karne ka Route (Frontend se yahan request aayegi)
+// 1. Plisio Invoice Create karne ka Route
 app.post('/create-plisio-invoice', async (req, res) => {
     try {
         const walletAddress = req.body.wallet_address || "PENDING_WALLET";
@@ -32,7 +31,6 @@ app.post('/create-plisio-invoice', async (req, res) => {
         const plsData = await plsResponse.json();
 
         if (plsData.status === 'success' && plsData.result && plsData.result.url) {
-            // User ko seedha Plisio ke payment page par redirect kar do
             return res.redirect(plsData.result.url);
         } else {
             console.error("Plisio Error Response:", plsData);
@@ -44,7 +42,7 @@ app.post('/create-plisio-invoice', async (req, res) => {
     }
 });
 
-// 2. Plisio Webhook Status Listen karne ka Route (Payment complete hone par token dispatch hoga)
+// 2. Plisio Webhook Status Listen karne ka Route
 app.post('/plisio-webhook', async (req, res) => {
     const paymentData = req.body;
 
