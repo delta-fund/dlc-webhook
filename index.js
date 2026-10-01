@@ -34,7 +34,7 @@ app.all('/create-plisio-invoice', async (req, res) => {
             source_amount: invoiceUSD.toString(),
             order_name: 'Delta Coin DLC Purchase',
             order_number: walletAddress,
-            currency: 'USDT_TON',
+            currency: 'USDT_TON', // Aap yahan currency badal sakte hain agar zaroorat ho (jaise USDT_BSC)
             api_key: PLISIO_API_KEY,
             callback_url: 'https://dlc-webhook.onrender.com/plisio-webhook',
             success_url: 'https://delta-fund.github.io/',
